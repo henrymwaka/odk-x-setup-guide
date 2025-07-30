@@ -59,7 +59,8 @@ With the server prepared, proceed with building the ODK-X components.
 
 2.  **Clone the Sync Endpoint Source Code:**
     ```bash
-    git clone -b master --single-branch --depth=1 [https://github.com/odk-x/sync-endpoint](https://github.com/odk-x/sync-endpoint)
+    # A full clone is performed to get the entire repository history.
+    git clone [https://github.com/odk-x/sync-endpoint](https://github.com/odk-x/sync-endpoint)
     ```
 
 3.  **Build the Sync Endpoint `.war` File:**
@@ -203,15 +204,17 @@ With all configurations in place, you can now deploy the stack.
 If you encounter issues, here are the solutions to the problems discovered during this build process.
 
 * **Error:** `nginx: [emerg] host not found in upstream "sync"` in `docker service logs syncldap_nginx`.
-    * **Cause:** A startup race condition. Nginx starts before the `sync` service is available on the Docker network.
-    * **Solution:** Adding the `resolver 127.0.0.11 valid=5s;` directive to the `sync-endpoint-http.conf` file, as detailed in section 3.2. **Note:** `127.0.0.11` is Docker's internal DNS resolver and should not be changed.
+    * **Cause:** This is a classic **startup race condition** in Docker Swarm. When you deploy the stack, all containers start at once. The Nginx container is lightweight and starts very quickly. It immediately tries to find the IP address for the service named "sync". However, the `sync` service takes longer to initialize. If Nginx looks for "sync" before the Docker network has registered it, Nginx fails to find the host and crashes.
+    * **Solution:** Adding the `resolver 127.0.0.11 valid=5s;` directive to the `sync-endpoint-http.conf` file.
+        * `resolver 127.0.0.11`: This explicitly tells Nginx to use Docker's own internal DNS server to find other services.
+        * `valid=5s`: This is the key part of the fix. It tells Nginx not to give up if it can't find the "sync" host immediately. Instead, it will cache the result for 5 seconds and try again, giving the `sync` service enough time to start and register itself on the network.
 
 * **Error:** `failed to update config ... Error response from daemon: rpc error: code = InvalidArgument desc = only updates to Labels are allowed`.
-    * **Cause:** You cannot change a Docker Swarm config while it is in use.
-    * **Solution:** You must first remove the old, empty configs. This requires tearing down the stack completely.
+    * **Cause:** You cannot change a Docker Swarm config while it is in use by a running service.
+    * **Solution:** You must first remove the old, empty configs. This requires tearing down the stack completely, which releases the lock on the configuration files.
         ```bash
         docker stack rm syncldap
-        # Wait 10 seconds
+        # Wait 10 seconds for services to stop
         docker config rm syncldap_com.nginx.sync-endpoint.conf
         # ... (and the other two nginx configs)
         docker stack deploy -c docker-compose.yml syncldap
