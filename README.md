@@ -1,10 +1,24 @@
 # ODK-X Sync Endpoint: A Complete Guide for Ubuntu 22.04 on Proxmox
 
-This guide provides a comprehensive, step-by-step walkthrough for setting up the ODK-X Sync Endpoint on an Ubuntu 22.04 LTS server, virtualized using Proxmox VE. It includes not only the standard installation steps but also critical troubleshooting solutions discovered during a real-world deployment, particularly concerning Nginx configuration in a Docker Swarm environment.
+This guide provides a comprehensive, step-by-step walkthrough for setting up the ODK-X Sync Endpoint on an Ubuntu 22.04 LTS server, virtualized using Proxmox VE. It includes not only the standard installation steps but also critical troubleshooting solutions discovered during a real-world deployment.
 
 **Author:** Shaykins
 **Date:** July 30, 2025
 **System:** Ubuntu 22.04.5 LTS on Proxmox VE
+
+---
+
+## A Note on the Official Documentation
+
+This guide is intended to supplement the [Official ODK-X Sync Endpoint Manual Setup Guide](https://docs.odk-x.org/sync-endpoint-manual-setup/). The official guide provides the foundational "happy path" for installation.
+
+However, during a real-world setup on a clean Ubuntu 22.04 server, several critical issues were encountered that are not covered in the official documentation. This guide provides the solutions to those specific problems, which include:
+
+1.  **Missing Nginx Configuration:** The `sync-endpoint-default-setup` repository did not contain the necessary Nginx configuration files, causing a total failure of the reverse proxy. This guide provides the exact content for these missing files.
+2.  **Docker Swarm Startup Race Condition:** The Nginx container would start faster than the backend `sync` service, causing it to crash with a `host not found` error. This guide implements a `resolver` directive in the Nginx configuration to solve this race condition.
+3.  **Real-World Troubleshooting:** This document includes the diagnostic steps (like checking Docker Swarm configs and service logs) that were required to identify and solve these issues.
+
+Our goal is to help others who may encounter these same challenges and provide a clear path to a successful deployment.
 
 ---
 
